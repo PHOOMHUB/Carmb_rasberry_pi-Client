@@ -156,6 +156,101 @@ Starting Raspberry Pi video streaming client...
 5. Send via WebSocket to server
 6. Wait for server acknowledgment and repeat
 
+### SMC+joy.py
+
+**Description:**
+A comprehensive control module for Raspberry Pi that integrates joystick input, SMC (Sliding Mode Control) for speed regulation, Hall sensor-based odometry, and dual communication channels (TCP for commands, WebSocket for telemetry). This script bridges remote control commands to the Pico motor controller while monitoring and stabilizing vehicle speed.
+
+**Key Features:**
+- **Dual Communication Channels:**
+  - TCP: Receives joystick commands (X, Y, Gear) from control server
+  - WebSocket: Sends real-time speed and gear telemetry to dashboard
+- **Multi-threaded Architecture:** Separate threads for TCP receiver and WebSocket sender to prevent blocking
+- **SMC Speed Control:** Implements Sliding Mode Controller for robust speed regulation
+  - Proportional Gain: K = 0.1
+  - Integral Gain: Ki = 0.02
+- **Hall Sensor Integration:** Reads 3-channel Hall effect sensors (GPIO 17, 22, 27) for wheel speed calculation
+- **Gear Management:** 5 gears (R, N, 1, 2, 3) with mapped speed targets (0-45 km/h)
+- **PWM Open-Loop Control:** Base throttle control from joystick input
+- **SMC Enhancement:** Adds closed-loop correction when fully accelerating below target speed
+- **Thread-Safe Data Sharing:** Uses locks to prevent race conditions between threads
+
+**Hardware Connections:**
+- **Serial:** `/dev/serial0` (UART to Pico)
+- **Hall Sensors:** GPIO 17, 22, 27 (wheel speed detection)
+- **Baudrate:** 115200 bps
+
+**Network Configuration:**
+```python
+SERVER_IP = '89.213.177.84'          # Control/Dashboard server
+TCP_SERVER_PORT = 1112              # Command port
+WEBSOCKET_URL = "ws://.../ws/pi"    # Telemetry endpoint
+```
+
+**Gear Mapping:**
+```
+Input → Gear → Speed Target → Max PWM
+  0  →  R  →     8 km/h    →  -0.2
+  1  →  N  →     0 km/h    →   0.0
+  2  →  1  →    15 km/h    →   0.2
+  3  →  2  →    30 km/h    →   0.35
+  4  →  3  →    45 km/h    →   0.45
+```
+
+**Control Input Format (TCP):**
+```
+X,Y,Gear
+```
+- **X:** Steering angle (-1.0 to 1.0, maps to 0°-180° servo)
+- **Y:** Throttle (-1.0 is full acceleration, 0.0 is neutral)
+- **Gear:** 0-4 (R, N, 1, 2, 3)
+
+**Command to Pico:**
+```
+angle,pwm
+```
+- **Angle:** 0-180° (servo steering)
+- **PWM:** -1.0 to 1.0 (motor speed, negative is reverse)
+
+**Telemetry Output (WebSocket):**
+```json
+{
+  "speed": 25,
+  "gear": "2"
+}
+```
+
+**SMC Logic:**
+- Activated when: throttle fully engaged (y == -1.0) AND current speed < target AND target ≠ 0
+- Combines open-loop throttle with PI feedback correction
+- Integral term accumulates only during full acceleration conditions
+- Resets integral error when not in full acceleration mode
+
+**Installation Requirements:**
+```bash
+pip3 install websocket-client gpiozero pyserial
+```
+
+**Hardware Specifications:**
+- **Wheel Diameter:** 0.1 m (10 cm)
+- **Pulses Per Revolution:** 6 (Hall sensor count)
+- **Speed Calculation:** Uses rolling time-window velocity from pulse count
+
+**Usage:**
+1. Configure server IP and ports in script
+2. Connect Hall sensors to GPIO pins
+3. Ensure UART connection to Pico is active
+4. Run: `python3 SMC+joy.py`
+5. Send joystick commands via TCP from control server
+
+**Output Example:**
+```
+✅ GPIO and Serial initialized.
+✅ Connected to TCP Server at Port 1112
+✅ Connected to WebSocket Server at ws://89.213.177.84:2222/ws/pi
+📩 Recv: 0.5,−1.0,3 → Gear: 2 | Speed: 22.50 (Ref: 30) | Error: 7.50 | PWM: 0.32 (OL: 0.35, SMC: -0.03) | UART: 135.0,0.32
+```
+
 ---
 
 ## Repository Structure
@@ -164,6 +259,7 @@ Carmb_rasberry_pi-Client/
 ├── PICOW.py              # Main firmware for Pico W motor/servo control
 ├── SOC.py                # Battery monitoring and WebSocket transmission
 ├── stream.py             # Real-time video streaming from Pi Camera 2
+├── SMC+joy.py            # Joystick control with SMC speed regulation
 └── README.md             # This file
 ```
 
