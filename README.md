@@ -98,6 +98,64 @@ Collecting data... (20/20)
 📤 Sent data: {"battery": 95.2, "voltage": 12.52}
 ```
 
+### stream.py
+
+**Description:**
+A Python script for Raspberry Pi that captures video from the Pi Camera 2 module and streams it in real-time to a WebSocket server. The script includes automatic autofocus calibration and JPEG compression for efficient network transmission.
+
+**Key Features:**
+- **Real-time Video Streaming:** Continuous video capture and transmission via WebSocket
+- **Camera Auto-Focus:** Automatic continuous autofocus with 2-second settle time
+- **JPEG Compression:** 75% quality compression for efficient bandwidth usage
+- **Asynchronous Operation:** Non-blocking async/await pattern for smooth streaming
+- **Resolution:** 846x480 pixels in XBGR8888 format
+- **Base64 Encoding:** Video frames encoded as base64 for easy transmission
+- **Graceful Shutdown:** Proper cleanup and camera resource release
+- **Error Handling:** Connection loss detection and recovery
+
+**Hardware Requirements:**
+- Raspberry Pi 4/5
+- Pi Camera 2 module (CSI/DSI connected)
+
+**Network Configuration:**
+```python
+uri = "ws://89.213.177.84:8765/pi_stream"  # Change to your server
+```
+
+**Camera Settings:**
+- **Resolution:** 846x480 pixels
+- **Format:** XBGR8888 (32-bit color)
+- **Autofocus Mode:** 2 (continuous)
+- **JPEG Quality:** 75% (balance between quality and bandwidth)
+
+**Installation Requirements:**
+```bash
+pip3 install opencv-python websockets picamera2 numpy
+```
+
+**Usage:**
+1. Configure WebSocket server URI in the script
+2. Ensure Pi Camera 2 is properly connected via CSI ribbon
+3. Run: `python3 stream.py`
+4. Monitor console for camera initialization and connection status
+
+**Startup Sequence:**
+```
+Starting Raspberry Pi video streaming client...
+✅ Camera sensor started.
+📸 Autofocus set to continuous mode. Waiting for it to settle...
+👍 Autofocus should be settled. Starting stream.
+✅ Connected to server at ws://89.213.177.84:8765/pi_stream
+```
+
+**Frame Transmission Flow:**
+1. Capture raw frame from camera (XBGR8888)
+2. Convert color space to BGR (OpenCV standard)
+3. Encode frame as JPEG (75% quality)
+4. Encode binary data as base64 string
+5. Send via WebSocket to server
+6. Wait for server acknowledgment and repeat
+
 ---
 
 ## Repository Structure
@@ -105,6 +163,7 @@ Collecting data... (20/20)
 Carmb_rasberry_pi-Client/
 ├── PICOW.py              # Main firmware for Pico W motor/servo control
 ├── SOC.py                # Battery monitoring and WebSocket transmission
+├── stream.py             # Real-time video streaming from Pi Camera 2
 └── README.md             # This file
 ```
 
