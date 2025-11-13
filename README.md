@@ -42,12 +42,69 @@ Send: 45,0.75
 Receive: 🛞 PWM: 0.75 (1875 µs) | เลี้ยว: 45.0° (1000 µs)
 ```
 
+### SOC.py
+
+**Description:**
+A Python script for Raspberry Pi that monitors battery State of Charge (SOC) using an ADS1115 analog-to-digital converter and sends real-time battery data to a WebSocket server. The script implements smoothing, calibration, and graceful connection handling.
+
+**Key Features:**
+- **Battery Monitoring:** Measures battery voltage using ADS1115 (16-bit ADC) connected via I2C
+- **WebSocket Communication:** Asynchronous transmission of battery data to remote server
+- **Voltage Calibration:** Converts analog readings (0-3.3V) to actual battery voltage (12.6V nominal)
+- **Data Smoothing:** 20-sample rolling buffer to reduce noise and jitter
+- **One-Way Logic:** Battery percentage only decreases or stays constant (prevents false increases)
+- **Automatic Reconnection:** Handles connection loss and retries every 10 seconds
+- **JSON Data Format:** Sends battery percentage and voltage as structured JSON
+
+**Hardware Connections:**
+- **I2C Bus:** Standard Raspberry Pi I2C (SDA, SCL)
+- **ADS1115 Pin A3:** Battery voltage input (scaled voltage)
+- **Address:** Default ADS1115 I2C address (0x48)
+
+**Configuration:**
+```python
+self.SERVER_URI = "ws://89.213.177.84:1669/ws/pi"  # Change to your server
+self.FULL_VOLTAGE = 12.6    # Max battery voltage (100%)
+self.EMPTY_VOLTAGE = 10.9   # Min battery voltage (0%)
+self.VOLTAGE_CONVERSION_RATIO = 12.6 / 3.1  # ADC scaling factor
+self.buffer_size = 20       # Samples for averaging
+```
+
+**Data Payload Format:**
+```json
+{
+  "battery": 85.5,
+  "voltage": 12.34
+}
+```
+
+**Installation Requirements:**
+```bash
+pip3 install websockets adafruit-circuitpython-ads1x15
+```
+
+**Usage:**
+1. Configure WebSocket server address in the script
+2. Ensure ADS1115 is properly connected via I2C
+3. Run: `python3 SOC.py`
+4. Monitor output for connection status and battery updates
+
+**Output Example:**
+```
+✅ Connected to WebSocket Server at ws://89.213.177.84:1669/ws/pi
+✅ ADS1115 sensor initialized successfully.
+Collecting data... (15/20)
+Collecting data... (20/20)
+📤 Sent data: {"battery": 95.2, "voltage": 12.52}
+```
+
 ---
 
 ## Repository Structure
 ```
 Carmb_rasberry_pi-Client/
 ├── PICOW.py              # Main firmware for Pico W motor/servo control
+├── SOC.py                # Battery monitoring and WebSocket transmission
 └── README.md             # This file
 ```
 
